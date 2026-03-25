@@ -1,0 +1,15 @@
+
+__pycache__/
+*.py[cod]
+*.so
+
+
+venv/
+env/
+
+dist/
+build/
+*.spec
+*.exe
+
+.DS_Store
