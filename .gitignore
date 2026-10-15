@@ -1,15 +1,42 @@
-
+# ---- Python ----
 __pycache__/
 *.py[cod]
 *.so
+*.egg-info/
+.eggs/
 
-
+# ---- 虚拟环境 ----
 venv/
+.venv/
 env/
 
-dist/
+# ---- 构建产物 ----
 build/
-*.spec
-*.exe
+dist/
+*.spec.bak
 
+# ---- 运行时产物（不应入库）----
+# 登录二维码与头像缓存在运行时生成，属于用户数据，不入库
+login_qrcode.png
+avatar_temp.png
+downloads/
+*.tmp
+*.part
+*.log
+logs/
+
+# ---- 本地配置/凭据 ----
+.credential.json
+*.credential
+
+# ---- IDE ----
+.idea/
+.vscode/
 .DS_Store
+
+# ---- 测试/工具缓存 ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
