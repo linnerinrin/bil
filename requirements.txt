@@ -1,15 +1,14 @@
-# 运行时直接依赖（与 pyproject.toml 的 dependencies 保持一致）
 bilibili-api-python>=17.4.1
 moviepy>=2.0
 Pillow>=10.0
 pyperclip>=1.8
 requests>=2.31
 pywinstyles>=1.6; sys_platform == "win32"
+sv-ttk>=2.6
 
-# 打包
+
 pyinstaller>=6.0
 
-# 开发/测试
 pytest>=8.0
 pytest-timeout>=2.3
 ruff>=0.6

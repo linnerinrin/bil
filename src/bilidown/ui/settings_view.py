@@ -1,12 +1,8 @@
-"""设置视图：背景、下载目录、并发数、完成后行为、重试次数。
+"""设置视图：背景、下载目录、并发数、完成后行为、重试次数
 
-设计约定
---------
-- 本视图**只负责收集用户输入**，不直接落盘、不直接改运行中的组件。
-  点「应用」时通过 ``on_apply(draft)`` 把一份 ``Preferences`` 草稿交给控制器，
-  由控制器统一校验、保存并让设置生效（见 ``app.apply_preferences``）。
-- 这样「改到一半」的状态不会被写入配置，出问题时也只有一个生效入口。
-- 视图实现销毁钩子，避免已销毁后仍有回调（沿用项目既有约定）。
+本视图只负责收集用户输入，不直接落盘、不直接改运行中的组件；
+点「应用」时通过 ``on_apply(draft)`` 把一份 ``Preferences`` 草稿交给控制器，
+由控制器统一校验、保存并让设置生效（见 ``app.apply_preferences``）
 """
 
 from __future__ import annotations
@@ -44,7 +40,7 @@ THUMB_SIZE = (220, 124)
 
 
 class SettingsView(BaseView):
-    """设置页面。"""
+    """设置页面"""
 
     def __init__(
         self,
@@ -59,12 +55,12 @@ class SettingsView(BaseView):
         self._on_apply = on_apply
         self._on_restore_defaults = on_restore_defaults
 
-        # 草稿：界面上的当前值，只有点「应用」才会真正生效
+        #草稿：界面上的当前值，只有点「应用」才会真正生效
         self._background = prefs.background_path
         self._download_dir = prefs.download_dir
         self._thumb_photo: object | None = None
 
-        # 内置背景清单（放进 resources/ 的图片会自动出现在这里）
+        #内置背景清单（放进resources/的图片会自动出现在这里）
         self._builtin_names = list_builtin_backgrounds()
         default_name = default_builtin_background()
         self._builtin_default = default_name
@@ -77,7 +73,7 @@ class SettingsView(BaseView):
         self._build_footer()
         self._refresh_background_preview()
 
-    # ------------------------------------------------------------- 顶部
+    #------------------------------------------------------------- 顶部
     def _build_header(self) -> None:
         header = tk.Frame(self, bg=str(STYLE["frame_bg"]))
         header.grid(row=0, column=0, sticky="ew", padx=24, pady=(14, 6))
@@ -92,9 +88,9 @@ class SettingsView(BaseView):
             bg=str(STYLE["frame_bg"]),
         ).pack(side=tk.LEFT, padx=(12, 0))
 
-    # ------------------------------------------------------------- 主体
+    #------------------------------------------------------------- 主体
     def _build_body(self) -> None:
-        # 内容较多，放进可滚动区域，避免小窗口下被截断
+        #内容较多，放进可滚动区域，避免小窗口下被截断
         wrapper = tk.Frame(self, bg=str(STYLE["frame_bg"]))
         wrapper.grid(row=1, column=0, sticky="nsew", padx=24)
 
@@ -120,16 +116,15 @@ class SettingsView(BaseView):
         self._build_directory_section(inner)
         self._build_runtime_section(inner)
 
-        # 滚轮绑定必须在**内容创建完成之后**：bind_mousewheel 递归绑定的是
-        # 「当前已存在的后代」，如果提前绑定，后面创建的卡片就收不到事件
-        # （这正是设置页滚不动的根因）。Tk 事件不冒泡，所以卡片与卡片内的
-        # 标签/按钮/输入框都必须各自绑定。
+        #滚轮绑定必须在内容创建完成之后：bind_mousewheel递归绑定的是
+        #当前已存在的后代，提前绑定则后建的卡片收不到事件
+        #（Tk事件不冒泡，卡片与卡片内的标签/按钮/输入框都必须各自绑定）
         from .widgets import bind_mousewheel_for_canvas, unbind_mousewheel
 
         bind_mousewheel_for_canvas(wrapper, canvas, include=inner)
         self.add_destroy_hook(lambda: unbind_mousewheel(wrapper))
 
-    # ---------------------------------------------------- ① 设置背景
+    #---------------------------------------------------- ① 设置背景
     def _build_background_section(self, parent: tk.Misc) -> None:
         card = self._card(
             parent,
@@ -140,12 +135,11 @@ class SettingsView(BaseView):
         row = tk.Frame(card, bg=str(STYLE["frame_bg"]))
         row.pack(fill=tk.X, padx=14, pady=(4, 10))
 
-        # 预览：**固定尺寸**，切换背景时不再改变自身大小
-        # （上一版在显示缩略图后残留了 width/height，恢复内置背景时被撑得很大）
+        #预览标签固定尺寸，切换背景时不改变自身大小
         self.preview_label = tk.Label(
             row,
             text="",
-            font=STYLE["small_font"],  # type: ignore[arg-type]
+            font=STYLE["small_font"],  #type: ignore[arg-type]
             bg=str(STYLE["frame_bg"]),
             fg=str(STYLE["muted_text"]),
             width=THUMB_SIZE[0],
@@ -158,7 +152,7 @@ class SettingsView(BaseView):
         right = tk.Frame(row, bg=str(STYLE["frame_bg"]))
         right.pack(side=tk.LEFT, padx=16, fill=tk.BOTH, expand=True)
 
-        # ---- 内置背景：列表 + 文件名 + 各自的缩略图预览
+        #---- 内置背景：列表 + 文件名 + 各自的缩略图预览
         make_label(
             right,
             "内置背景",
@@ -169,7 +163,7 @@ class SettingsView(BaseView):
         builtin_box = tk.Frame(right, bg=str(STYLE["frame_bg"]))
         builtin_box.pack(anchor="w", pady=(4, 8))
 
-        # 宽度按最长文件名自适应（用字符数单位），避免只有一项时被拉满整行
+        #宽度按最长文件名自适应（用字符数单位），避免只有一项时拉满整行
         longest = max((len(name) for name in self._builtin_names), default=12)
         list_width = max(18, min(46, longest + 6))
 
@@ -177,7 +171,7 @@ class SettingsView(BaseView):
             builtin_box,
             height=min(4, max(1, len(self._builtin_names))),
             width=list_width,
-            font=STYLE["small_font"],  # type: ignore[arg-type]
+            font=STYLE["small_font"],  #type: ignore[arg-type]
             bg="white",
             fg=str(STYLE["text_color"]),
             activestyle="none",
@@ -206,7 +200,7 @@ class SettingsView(BaseView):
                 bg=str(STYLE["frame_bg"]),
             ).pack(anchor="w")
 
-        # ---- 自定义背景
+        #---- 自定义背景
         make_label(
             right,
             "自定义背景",
@@ -246,17 +240,17 @@ class SettingsView(BaseView):
             bg=str(STYLE["frame_bg"]),
         ).pack(anchor="w", pady=(8, 0))
 
-    # ----------------------------------------------------- 内置背景操作
+    #----------------------------------------------------- 内置背景操作
     def _select_builtin_in_list(self) -> None:
-        """让列表选中当前生效的内置背景（没有则选第一项）。"""
+        """让列表选中当前生效的内置背景（没有则选第一项）"""
         if not self._builtin_names:
             return
         current = parse_builtin_ref(self._background) or self._builtin_default
         if self._background and not is_builtin_ref(self._background):
-            # 当前用的是自定义背景，列表不选中任何项
+            #当前用的是自定义背景，列表不选中任何项
             try:
                 self.builtin_list.selection_clear(0, tk.END)
-            except tk.TclError:  # pragma: no cover
+            except tk.TclError:  #pragma: no cover
                 pass
             return
         if current in self._builtin_names:
@@ -267,13 +261,13 @@ class SettingsView(BaseView):
             self.builtin_list.selection_clear(0, tk.END)
             self.builtin_list.selection_set(index)
             self.builtin_list.see(index)
-        except tk.TclError:  # pragma: no cover
+        except tk.TclError:  #pragma: no cover
             pass
 
     def _selected_builtin(self) -> str:
         try:
             selection = self.builtin_list.curselection()
-        except tk.TclError:  # pragma: no cover
+        except tk.TclError:  #pragma: no cover
             return ""
         if not selection:
             return ""
@@ -283,7 +277,7 @@ class SettingsView(BaseView):
         return ""
 
     def _on_builtin_selected(self, _event: object = None) -> None:
-        """在列表里点选内置背景：立即刷新缩略图，点「应用」才真正生效。"""
+        """在列表里点选内置背景：立即刷新缩略图，点「应用」才真正生效"""
         name = self._selected_builtin()
         if not name:
             return
@@ -298,7 +292,7 @@ class SettingsView(BaseView):
             return
         self._on_builtin_selected()
 
-    # ---------------------------------------------------- ② 设置下载目录
+    #---------------------------------------------------- ② 设置下载目录
     def _build_directory_section(self, parent: tk.Misc) -> None:
         card = self._card(
             parent, "设置下载目录", "已开始下载的任务会继续写入原目录，新任务使用新目录"
@@ -311,7 +305,7 @@ class SettingsView(BaseView):
         entry = tk.Entry(
             row,
             textvariable=self.dir_var,
-            font=STYLE["normal_font"],  # type: ignore[arg-type]
+            font=STYLE["normal_font"],  #type: ignore[arg-type]
             bg="white",
             fg=str(STYLE["text_color"]),
             relief=tk.FLAT,
@@ -342,11 +336,11 @@ class SettingsView(BaseView):
         )
         self.dir_hint.pack(anchor="w", padx=14, pady=(0, 10))
 
-    # ---------------------------------------------------- ③④⑤ 运行设置
+    #---------------------------------------------------- ③④⑤ 运行设置
     def _build_runtime_section(self, parent: tk.Misc) -> None:
         card = self._card(parent, "下载行为", "影响之后新建的下载任务")
 
-        # 并发数
+        #并发数
         row1 = tk.Frame(card, bg=str(STYLE["frame_bg"]))
         row1.pack(fill=tk.X, padx=14, pady=(4, 8))
         make_label(
@@ -371,7 +365,7 @@ class SettingsView(BaseView):
             bg=str(STYLE["frame_bg"]),
         ).pack(side=tk.LEFT)
 
-        # 重试次数
+        #重试次数
         row2 = tk.Frame(card, bg=str(STYLE["frame_bg"]))
         row2.pack(fill=tk.X, padx=14, pady=(0, 8))
         make_label(
@@ -396,7 +390,7 @@ class SettingsView(BaseView):
             bg=str(STYLE["frame_bg"]),
         ).pack(side=tk.LEFT)
 
-        # 完成后打开文件夹
+        #完成后打开文件夹
         row3 = tk.Frame(card, bg=str(STYLE["frame_bg"]))
         row3.pack(fill=tk.X, padx=14, pady=(0, 12))
         self.open_folder_var = tk.BooleanVar(value=self._prefs.open_folder_when_done)
@@ -404,7 +398,7 @@ class SettingsView(BaseView):
             row3,
             text="下载完成后自动打开所在文件夹",
             variable=self.open_folder_var,
-            font=STYLE["normal_font"],  # type: ignore[arg-type]
+            font=STYLE["normal_font"],  #type: ignore[arg-type]
             bg=str(STYLE["frame_bg"]),
             fg=str(STYLE["text_color"]),
             activebackground=str(STYLE["frame_bg"]),
@@ -412,7 +406,7 @@ class SettingsView(BaseView):
             anchor="w",
         ).pack(side=tk.LEFT)
 
-    # ------------------------------------------------------------- 底部
+    #------------------------------------------------------------- 底部
     def _build_footer(self) -> None:
         footer = tk.Frame(self, bg=str(STYLE["frame_bg"]))
         footer.grid(row=2, column=0, sticky="ew", padx=24, pady=(8, 14))
@@ -438,13 +432,9 @@ class SettingsView(BaseView):
             side=tk.RIGHT, padx=10
         )
 
-    # ------------------------------------------------------------- 工具
+    #------------------------------------------------------------- 工具
     def _card(self, parent: tk.Misc, title: str, subtitle: str) -> tk.Frame:
-        """创建一张设置卡片。
-
-        滚轮绑定**不在这里做**：统一由 _build_body 在全部内容创建完成后
-        递归绑定一次，否则会重复绑定导致滚动速度不一致。
-        """
+        """创建一张设置卡片（滚轮绑定统一由_build_body在内容创建完成后做一次）"""
         card = tk.Frame(parent, bg=str(STYLE["frame_bg"]), bd=1, relief=tk.GROOVE)
         card.pack(fill=tk.X, pady=(0, 12))
         head = tk.Frame(card, bg=str(STYLE["frame_bg"]))
@@ -469,7 +459,7 @@ class SettingsView(BaseView):
             fg=str(STYLE["accent_color"]) if accent else str(STYLE["muted_text"]),
         )
 
-    # ------------------------------------------------------------- 背景
+    #------------------------------------------------------------- 背景
     def _choose_background(self) -> None:
         path = filedialog.askopenfilename(
             title="选择背景图片",
@@ -481,24 +471,24 @@ class SettingsView(BaseView):
         if not is_supported_background(path):
             self._set_hint("该文件格式不受支持，请选择 jpg/png/bmp/webp 图片")
             return
-        # 先试解码，坏文件在应用前就拦住
+        #先试解码，坏文件在应用前就拦住
         try:
             from PIL import Image
 
             with Image.open(path) as opened:
                 opened.verify()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  #noqa: BLE001
             _log.warning("背景图片无法解析: %s", path, exc_info=True)
             messagebox.showerror("无法使用该图片", f"图片打不开或已损坏：\n{exc}")
             return
 
         self._background = path
-        self._select_builtin_in_list()  # 自定义背景时列表不选中任何项
+        self._select_builtin_in_list()  #自定义背景时列表不选中任何项
         self._refresh_background_preview()
         self._set_hint("已选择新背景，点击「应用」生效")
 
     def _clear_background(self) -> None:
-        """清除自定义背景，回到默认内置背景。"""
+        """清除自定义背景，回到默认内置背景"""
         self._background = (
             make_builtin_ref(self._builtin_default) if self._builtin_default else ""
         )
@@ -507,11 +497,7 @@ class SettingsView(BaseView):
         self._set_hint("已切回内置背景，点击「应用」生效")
 
     def _refresh_background_preview(self) -> None:
-        """刷新缩略图。
-
-        预览标签的 width/height 是**创建时固定**的（字符数单位），这里绝不再改，
-        否则显示过图片之后再切回内置背景，标签会被撑得很大（真实 bug）。
-        """
+        """刷新缩略图，预览标签的宽高保持创建时的固定值不变"""
         if not self.alive:
             return
 
@@ -540,20 +526,20 @@ class SettingsView(BaseView):
             with Image.open(image_path) as opened:
                 image = opened.convert("RGB")
             thumb = ImageOps.fit(image, THUMB_SIZE, method=Image.LANCZOS)
-            # 显式 master：避免多 Tk root 时图片注册到别的解释器上
+            #显式master，避免多Tk root时图片注册到别的解释器上
             self._thumb_photo = ImageTk.PhotoImage(thumb, master=self)
-        except Exception:  # noqa: BLE001 - 预览失败不影响已保存的选择
+        except Exception:  #noqa: BLE001 - 预览失败不影响已保存的选择
             _log.warning("背景缩略图生成失败: %s", image_path, exc_info=True)
             self._thumb_photo = None
             self.preview_label.config(image="", text="预览失败")
             self.bg_path_label.config(text=description)
             return
 
-        # 只改 image 与 text，不动 width/height：保持预览区尺寸恒定
+        #只改image与text，不动width/height，保持预览区尺寸恒定
         self.preview_label.config(image=self._thumb_photo, text="")
         self.bg_path_label.config(text=description)
 
-    # ------------------------------------------------------------- 目录
+    #------------------------------------------------------------- 目录
     def _choose_directory(self) -> None:
         initial = self.dir_var.get().strip() or str(default_download_dir())
         path = filedialog.askdirectory(title="选择下载目录", initialdir=initial)
@@ -580,14 +566,14 @@ class SettingsView(BaseView):
                 messagebox.showwarning("无法打开", f"目录不存在且无法创建：\n{target}")
                 return
             DownloadView.open_path(str(resolved))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  #noqa: BLE001
             messagebox.showwarning("无法打开", f"打开目录失败：\n{exc}")
 
-    # ------------------------------------------------------------- 提交
+    #------------------------------------------------------------- 提交
     def collect(self) -> Preferences:
-        """把界面上的值汇总成一份偏好草稿（已做范围校验）。"""
+        """把界面上的值汇总成一份偏好草稿（已做范围校验）"""
         dir_text = self.dir_var.get().strip()
-        # 用户填的就是默认目录时，存空串表示「跟随默认」，便于将来默认路径变化
+        #用户填的就是默认目录时存空串表示「跟随默认」
         if dir_text and dir_text == str(default_download_dir()):
             dir_text = ""
         return self._prefs.copy_with(
@@ -609,9 +595,9 @@ class SettingsView(BaseView):
             return
         self._on_restore_defaults()
 
-    # ------------------------------------------------------------- 外部刷新
+    #------------------------------------------------------------- 外部刷新
     def show_saved(self, prefs: Preferences, message: str) -> None:
-        """控制器保存成功后回填界面。"""
+        """控制器保存成功后回填界面"""
         if not self.alive:
             return
         self._prefs = prefs

@@ -1,10 +1,4 @@
-"""下载任务列表视图。
-
-修复审计缺陷 B6：旧实现 ``tree.after(50, lambda: refresh(...))`` 是永不停止的
-自递归，并且每 50ms 全表 delete+insert。这里改为：
-  - 由控制器按固定间隔（默认 400ms）调用 ``refresh()``，全部增量更新单元格；
-  - 视图销毁时自动注销刷新，不再有对已销毁控件的调用。
-"""
+"""下载任务列表视图，由控制器按固定间隔调用 ``refresh()`` 增量更新单元格"""
 
 from __future__ import annotations
 
@@ -29,9 +23,17 @@ COLUMNS = (
     ("message", "说明", 200),
 )
 
+#类型列显示产物格式（封面任务也是音频kind，直接显示kind会误导）
+_KIND_LABELS = {
+    "mp4": "视频",
+    "m4a": "音频",
+    "mp3": "MP3",
+    "jpg": "封面",
+}
+
 
 class DownloadView(BaseView):
-    """下载任务表格 + 操作按钮。"""
+    """下载任务表格 + 操作按钮"""
 
     def __init__(
         self,
@@ -52,7 +54,7 @@ class DownloadView(BaseView):
         self._on_open_folder = on_open_folder
         self._on_open_file = on_open_file
 
-        self._rows: dict[str, str] = {}  # task_id -> tree iid
+        self._rows: dict[str, str] = {}  #task_id -> tree iid
         self._task_by_iid: dict[str, DownloadTask] = {}
 
         header = tk.Frame(self, bg=str(STYLE["frame_bg"]))
@@ -77,7 +79,7 @@ class DownloadView(BaseView):
         self.tree.configure(yscrollcommand=scrollbar.set)
         self.tree.bind("<Double-1>", self._on_double_click)
 
-        # 修复「下载列表无法用滚轮滚动」：原先完全没有绑定滚轮事件
+        #绑定滚轮事件
         bind_mousewheel(self.tree)
         bind_mousewheel(body, self.tree)
         bind_mousewheel(self, self.tree)
@@ -105,13 +107,13 @@ class DownloadView(BaseView):
         make_button(bar, "打开下载目录", self._on_open_folder, bg="#00a1d6",
                     font_key="small_font", padx=12, pady=5).pack(side=tk.RIGHT)
 
-    # ------------------------------------------------------------- 刷新
+    #------------------------------------------------------------- 刷新
     def refresh(self, tasks: list[DownloadTask]) -> None:
-        """按 task_id 增量更新表格。"""
+        """按task_id增量更新表格"""
         try:
             if not self.alive:
                 return
-        except tk.TclError:  # pragma: no cover - 控件已销毁
+        except tk.TclError:  #pragma: no cover - 控件已销毁
             return
 
         seen: set[str] = set()
@@ -141,7 +143,9 @@ class DownloadView(BaseView):
 
     @staticmethod
     def _values_for(task: DownloadTask) -> tuple[str, ...]:
-        kind = "视频" if task.kind.value == "video" else "音频"
+        kind = _KIND_LABELS.get(task.format.value, "未知")
+        if len(task.item.pages) > 1:
+            kind = f"{kind}·P{task.page_index}"
         return (
             task.item.bvid,
             task.item.title,
@@ -162,7 +166,7 @@ class DownloadView(BaseView):
             text=f"共 {len(tasks)} 个任务 · 进行中 {active} · 完成 {done} · 失败 {failed}"
         )
 
-    # ------------------------------------------------------------- 选择
+    #------------------------------------------------------------- 选择
     def _selected_tasks(self) -> list[DownloadTask]:
         result = []
         for iid in self.tree.selection():
@@ -194,15 +198,15 @@ class DownloadView(BaseView):
         if tasks:
             self._on_open_file(tasks[0])
 
-    # ------------------------------------------------------------- 工具
+    #------------------------------------------------------------- 工具
     @staticmethod
     def open_path(path: str) -> None:
-        """用系统默认方式打开文件或目录。"""
+        """用系统默认方式打开文件或目录"""
         if not path or not os.path.exists(path):
             return
         if sys.platform == "win32":
-            os.startfile(path)  # type: ignore[attr-defined]
+            os.startfile(path)  #type: ignore[attr-defined]
         elif sys.platform == "darwin":
-            subprocess.Popen(["open", path])  # noqa: S603,S607
+            subprocess.Popen(["open", path])  #noqa: S603,S607
         else:
-            subprocess.Popen(["xdg-open", path])  # noqa: S603,S607
+            subprocess.Popen(["xdg-open", path])  #noqa: S603,S607

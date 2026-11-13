@@ -1,10 +1,7 @@
-"""扫码登录视图。
+"""扫码登录视图
 
-修复审计缺陷：
-  B3   明确渲染四种扫码状态（未扫描 / 已扫描待确认 / 已过期 / 成功），
-       过期时提示用户点击「刷新二维码」，不再无限轮询已失效的二维码。
-  C12  删除了账密登录假入口（旧 login.py 里点了只弹「未实现」的按钮）。
-  非阻塞式二维码：二维码在后台线程生成，生成期间界面可响应。
+渲染四种扫码状态（未扫描／已扫描待确认／已过期／成功），二维码在后台线程生成，
+生成期间界面可响应；过期时提示用户点击「刷新二维码」
 """
 
 from __future__ import annotations
@@ -26,7 +23,7 @@ QR_SIZE = 300
 
 
 class LoginView(BaseView):
-    """扫码登录界面（左：二维码，右：状态与操作）。"""
+    """扫码登录界面（左：二维码，右：状态与操作）"""
 
     def __init__(
         self,
@@ -50,11 +47,11 @@ class LoginView(BaseView):
             anchor="center",
         ).pack(pady=(30, 12))
 
-        # 二维码占位（真实图片异步替换）
+        #二维码占位（真实图片异步替换）
         self.qr_label = tk.Label(
             left,
             text="二维码生成中…",
-            font=STYLE["normal_font"],  # type: ignore[arg-type]
+            font=STYLE["normal_font"],  #type: ignore[arg-type]
             bg=str(STYLE["frame_bg"]),
             fg=str(STYLE["muted_text"]),
             width=28,
@@ -97,7 +94,7 @@ class LoginView(BaseView):
         self.logout_btn.pack(side=tk.LEFT, padx=6)
         self.logout_btn.pack_forget()
 
-        # 右侧说明区
+        #右侧说明区
         right = tk.Frame(self, bg=str(STYLE["frame_bg"]))
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         make_label(
@@ -122,13 +119,13 @@ class LoginView(BaseView):
                 anchor="w",
             ).pack(anchor="w", padx=44, pady=2)
 
-    # ------------------------------------------------------------- 对外接口
+    #------------------------------------------------------------- 对外接口
     @property
     def qrcode_text(self) -> str:
-        """二维码区域的文字（占位/过期提示），便于断言与自动化测试。"""
+        """二维码区域的文字（占位/过期提示），便于断言与自动化测试"""
         try:
             return str(self.qr_label.cget("text"))
-        except tk.TclError:  # pragma: no cover - 控件已销毁
+        except tk.TclError:  #pragma: no cover - 控件已销毁
             return ""
 
     def set_status(self, text: str, *, accent: bool = True) -> None:
@@ -140,14 +137,14 @@ class LoginView(BaseView):
         )
 
     def set_qrcode(self, png_bytes: bytes) -> None:
-        """用 PNG 字节流更新二维码图片。"""
+        """用PNG字节流更新二维码图片"""
         if not self.alive:
             return
         try:
             image = Image.open(io.BytesIO(png_bytes)).resize((QR_SIZE, QR_SIZE))
-            # 显式 master：避免存在多个 Tk root 时图片注册到别的解释器上
+            #显式master，避免多Tk root时图片注册到别的解释器上
             self._qr_photo = ImageTk.PhotoImage(image, master=self)
-        except Exception:  # noqa: BLE001
+        except Exception:  #noqa: BLE001
             _log.warning("二维码图片渲染失败", exc_info=True)
             self.qr_label.config(text="二维码渲染失败，请点击刷新", image="")
             return
@@ -173,7 +170,7 @@ class LoginView(BaseView):
         self._qr_photo = None
         self.set_status("二维码已过期，请点击「刷新二维码」重新获取", accent=False)
 
-    # ------------------------------------------------------------- 事件
+    #------------------------------------------------------------- 事件
     def _handle_refresh(self) -> None:
         self.set_refreshing(True)
         self.on_refresh()
@@ -183,7 +180,7 @@ class LoginView(BaseView):
             self._on_logout()
 
     def register_refresh(self, callback: Callable[[], None]) -> None:
-        """允许控制器替换刷新逻辑。"""
+        """允许控制器替换刷新逻辑"""
         self._on_refresh = callback
 
     def register_logout(self, callback: Callable[[], None]) -> None:

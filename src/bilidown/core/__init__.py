@@ -1,30 +1,40 @@
-"""核心层：事件循环桥接、API 客户端、下载器、任务管理与领域模型。"""
+#架构作用：集中暴露核心领域类型、异步桥接与网络下载接口，供上层统一导入
+"""核心层：事件循环桥接、API客户端、下载器、任务管理与领域模型"""
 
 from __future__ import annotations
 
+#导出桥接器：暴露进程常驻事件循环
 from .bridge import BackgroundLoop
+#导出客户端：集中暴露视频检索、清晰度映射与解析函数
 from .client import (
+    QUALITY_ORDER,
+    QUALITY_TABLE,
     BiliClient,
     ClientError,
     SearchResult,
     StreamSelection,
     codecs_to_kind,
-    human_size,
     parse_bv,
     parse_count,
     parse_duration,
+    quality_label,
+    quality_permission,
     sanitize_filename,
     select_streams_from_dash,
 )
 from .credential import CredentialStore
 from .downloader import DownloadError, MediaDownloader, merge_video_audio
+#导出领域模型：任务、视频与分P信息
 from .models import (
     DownloadCancelled,
+    DownloadFormat,
     DownloadKind,
     DownloadStatus,
     DownloadTask,
     VideoItem,
+    VideoPage,
 )
+#导出网络与偏好：共用客户端网络配置和本地用户设置
 from .network import (
     NetworkSettings,
     apply_library_settings,
@@ -43,6 +53,7 @@ from .preferences import (
 )
 from .preferences import load as load_preferences
 from .preferences import save as save_preferences
+#导出登录与任务：提供二维码流程及下载任务调度
 from .qrlogin import (
     LoginSession,
     QrPollResult,
@@ -54,6 +65,7 @@ from .qrlogin import (
 )
 from .tasks import TaskManager
 
+#公开符号表：限定从core包默认导出的接口
 __all__ = [
     "BackgroundLoop",
     "BiliClient",
@@ -62,6 +74,7 @@ __all__ = [
     "CredentialStore",
     "DownloadCancelled",
     "DownloadError",
+    "DownloadFormat",
     "DownloadKind",
     "DownloadStatus",
     "DownloadTask",
@@ -70,6 +83,8 @@ __all__ = [
     "NetworkSettings",
     "PreferenceStore",
     "Preferences",
+    "QUALITY_ORDER",
+    "QUALITY_TABLE",
     "QrPollResult",
     "QrState",
     "RETRIES_RANGE",
@@ -77,6 +92,7 @@ __all__ = [
     "StreamSelection",
     "TaskManager",
     "VideoItem",
+    "VideoPage",
     "apply_library_settings",
     "background_hint_dir",
     "build_credential",
@@ -85,7 +101,6 @@ __all__ = [
     "create_session",
     "describe",
     "exchange_ticket",
-    "human_size",
     "is_ticket_url",
     "load_network_settings",
     "load_preferences",
@@ -94,8 +109,10 @@ __all__ = [
     "parse_count",
     "parse_duration",
     "parse_login_cookies",
+    "quality_label",
+    "quality_permission",
     "reset_cache",
     "sanitize_filename",
     "save_preferences",
-    "select_streams_from_dash",
+    "select_streams_from_dash",  #导出DASH流选择器
 ]

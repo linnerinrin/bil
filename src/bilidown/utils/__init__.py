@@ -1,4 +1,4 @@
-"""通用工具层。"""
+"""通用工具层"""
 
 from __future__ import annotations
 

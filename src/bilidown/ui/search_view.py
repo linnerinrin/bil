@@ -1,10 +1,7 @@
-"""搜索视图：关键词/BV 搜索、结果列表、单条与批量下载。
+"""搜索视图：关键词/BV搜索、结果列表、单条与批量下载
 
-修复审计缺陷 B7/B8：
-  B7  搜索不再在 Tk 主线程 asyncio.run 阻塞界面；由控制器提交后台事件循环，
-      结果通过回调切回主线程渲染。
-  B8  滚轮事件绑定在 canvas 上（而非 content_frame 全局覆盖绑定），
-      且视图销毁时自动解绑，不再影响其他页面、也不会打到已销毁控件。
+搜索由控制器提交后台事件循环，结果通过回调切回主线程渲染；滚轮事件绑定在
+canvas上，视图销毁时自动解绑
 """
 
 from __future__ import annotations
@@ -15,11 +12,18 @@ from collections.abc import Callable
 from ..config.settings import STYLE
 from ..core.models import VideoItem
 from .base import BaseView
-from .widgets import bind_mousewheel, make_button, make_label, make_scrollable, unbind_mousewheel
+from .widgets import (
+    RoundedCard,
+    bind_mousewheel,
+    make_button,
+    make_label,
+    make_scrollable,
+    unbind_mousewheel,
+)
 
 
 class SearchView(BaseView):
-    """搜索结果界面。"""
+    """搜索结果界面"""
 
     def __init__(
         self,
@@ -43,14 +47,14 @@ class SearchView(BaseView):
         self._build_result_area()
         self._build_footer()
 
-        # 滚轮绑定：固定容器只绑一次；
-        # 结果卡片是每次渲染新建的，所以要在 _render_item 里逐个绑定
-        # （Tk 事件不冒泡，只绑容器收不到子控件上的滚轮）
+        #滚轮绑定：固定容器只绑一次
+        #结果卡片是每次渲染新建的，所以要在_render_item里逐个绑定
+        #（Tk事件不冒泡，只绑容器收不到子控件上的滚轮）
         bind_mousewheel(self.canvas, self.canvas)
         bind_mousewheel(self.results_frame, self.canvas)
         self.add_destroy_hook(self._unbind_wheel)
 
-    # ------------------------------------------------------------- 构建
+    #------------------------------------------------------------- 构建
     def _build_toolbar(self) -> None:
         bar = tk.Frame(self, bg=str(STYLE["frame_bg"]))
         bar.pack(fill=tk.X, padx=30, pady=(16, 8))
@@ -59,7 +63,7 @@ class SearchView(BaseView):
         self.entry = tk.Entry(
             bar,
             textvariable=self.search_var,
-            font=STYLE["normal_font"],  # type: ignore[arg-type]
+            font=STYLE["normal_font"],  #type: ignore[arg-type]
             bg="white",
             fg=str(STYLE["text_color"]),
             bd=2,
@@ -126,7 +130,7 @@ class SearchView(BaseView):
         )
         self.batch_audio_btn.pack(side=tk.RIGHT, padx=8)
 
-    # ------------------------------------------------------------- 事件
+    #------------------------------------------------------------- 事件
     def _unbind_wheel(self) -> None:
         for widget in (getattr(self, "canvas", None), getattr(self, "results_frame", None)):
             if widget is not None:
@@ -147,7 +151,7 @@ class SearchView(BaseView):
             return
         self._on_batch(list(self._items), kind)
 
-    # ------------------------------------------------------------- 渲染
+    #------------------------------------------------------------- 渲染
     def set_loading(self, loading: bool) -> None:
         if not self.alive:
             return
@@ -171,7 +175,7 @@ class SearchView(BaseView):
             widget.destroy()
 
     def render(self, items: list[VideoItem], keyword: str, page: int) -> None:
-        """渲染一页搜索结果。"""
+        """渲染一页搜索结果"""
         if not self.alive:
             return
         self._items = list(items)
@@ -192,16 +196,19 @@ class SearchView(BaseView):
         self._refresh_scrollregion()
 
     def _render_item(self, index: int, video: VideoItem) -> None:
-        card = tk.Frame(
+        bg = str(STYLE["frame_bg"])
+        card = RoundedCard(
             self.results_frame,
-            bg=str(STYLE["frame_bg"]),
-            bd=1,
-            relief=tk.GROOVE,
+            bg=bg,
+            border="#000000",
+            radius=16,
+            pad=10,
+            corner="chamfer",
         )
-        card.pack(fill=tk.X, padx=6, pady=5)
+        card.pack(fill=tk.X, padx=8, pady=6)
 
-        info = tk.Frame(card, bg=str(STYLE["frame_bg"]))
-        info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=12, pady=8)
+        info = tk.Frame(card.body, bg=bg)
+        info.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(4, 8), pady=2)
 
         make_label(
             info,
@@ -212,22 +219,24 @@ class SearchView(BaseView):
         ).pack(anchor="w")
 
         duration = _format_duration(video.duration)
-        meta = (
-            f"BV号: {video.bvid}    UP主: {video.author or '未知'}"
-            f"    播放: {video.play}    弹幕: {video.danmaku}"
-        )
+        #视频信息竖排（每项一行）
+        meta_lines = [
+            f"BV号：{video.bvid}",
+            f"UP主：{video.author or '未知'}",
+            f"播放：{video.play}    弹幕：{video.danmaku}",
+        ]
         if duration:
-            meta += f"    时长: {duration}"
+            meta_lines.append(f"时长：{duration}")
         make_label(
             info,
-            meta,
+            "\n".join(meta_lines),
             font_key="small_font",
             fg="#00a1d6",
-            bg=str(STYLE["frame_bg"]),
+            bg=bg,
         ).pack(anchor="w", pady=(4, 0))
 
-        actions = tk.Frame(card, bg=str(STYLE["frame_bg"]))
-        actions.pack(side=tk.RIGHT, padx=12, pady=8)
+        actions = tk.Frame(card.body, bg=bg)
+        actions.pack(side=tk.RIGHT, padx=(0, 4), pady=2)
 
         make_button(
             actions,
@@ -256,10 +265,19 @@ class SearchView(BaseView):
             padx=10,
             pady=5,
         ).pack(fill=tk.X, pady=2)
+        make_button(
+            actions,
+            "下载封面",
+            lambda v=video: self._on_download(v, "cover"),
+            bg="#7e57c2",
+            font_key="small_font",
+            padx=10,
+            pady=5,
+        ).pack(fill=tk.X, pady=2)
 
-        # Tk 事件不冒泡，卡片是子控件：必须把这张卡片（含其子控件）也绑上滚轮，
-        # 否则鼠标停在结果上时无法滚动
+        #Tk事件不冒泡，卡片及其子控件也要绑上滚轮，否则鼠标停在结果上时无法滚动
         bind_mousewheel(card, self.canvas)
+        bind_mousewheel(card.body, self.canvas)
 
     def _refresh_scrollregion(self) -> None:
         if not self.alive:
@@ -281,16 +299,12 @@ class SearchView(BaseView):
 
 
 def _format_duration(seconds: object) -> str:
-    """把时长渲染成 ``M:SS`` / ``H:MM:SS``。
-
-    接口返回值类型并不稳定（可能是 ``"7:49"`` 这样的字符串），
-    这里先做一次解析兜底，绝不抛异常。
-    """
+    """把时长渲染成 ``M:SS``／``H:MM:SS``，无法解析的输入兜底不抛异常"""
     from ..core.client import parse_duration
 
     total = parse_duration(seconds)
     if total <= 0:
-        # 已经是形如 "7:49" 的字符串就原样显示，解析不出来才留空
+        #已是形如"7:49"的字符串就原样显示，解析不出来才留空
         text = str(seconds or "").strip()
         return text if ":" in text else ""
     hours, remainder = divmod(total, 3600)

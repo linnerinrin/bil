@@ -1,4 +1,4 @@
-"""界面层：仅负责布局与事件绑定，业务逻辑一律交给控制器（BilidownApp）。"""
+"""界面层：仅负责布局与事件绑定，业务逻辑一律交给控制器（BilidownApp）"""
 
 from __future__ import annotations
 

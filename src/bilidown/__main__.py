@@ -1,4 +1,4 @@
-"""包入口：``python -m bilidown`` 或 ``python run.py``。"""
+"""包入口：``python -m bilidown``或``python run.py``"""
 
 from __future__ import annotations
 

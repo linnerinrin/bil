@@ -1,10 +1,4 @@
-"""个人信息视图。
-
-修复审计缺陷：
-  旧 profile.py 用 ``user_info["level"]``、``user_info["following"]`` 等直接下标取值，
-  B 站接口字段变动或缺字段时会 KeyError 让整个界面白屏。这里统一用安全取值。
-  头像由控制器在后台线程下载（不在 UI 线程发 HTTP 请求）。
-"""
+"""个人信息视图，字段统一安全取值，头像由控制器在后台线程下载"""
 
 from __future__ import annotations
 
@@ -22,7 +16,7 @@ AVATAR_SIZE = 96
 
 
 class ProfileView(BaseView):
-    """展示登录用户资料。"""
+    """展示登录用户资料"""
 
     def __init__(
         self,
@@ -40,7 +34,7 @@ class ProfileView(BaseView):
             return
         self._build_profile(user_info, on_refresh)
 
-    # ------------------------------------------------------------- 未登录
+    #------------------------------------------------------------- 未登录
     def _build_empty(self, on_login: Callable[[], None] | None) -> None:
         make_label(
             self, "尚未登录", font_key="title_font", anchor="center"
@@ -55,7 +49,7 @@ class ProfileView(BaseView):
         if on_login is not None:
             make_button(self, "去登录", on_login).pack()
 
-    # --------------------------------------------------------------- 已登录
+    #--------------------------------------------------------------- 已登录
     def _build_profile(
         self, info: dict[str, Any], on_refresh: Callable[[], None] | None
     ) -> None:
@@ -65,7 +59,7 @@ class ProfileView(BaseView):
         self.avatar_label = tk.Label(
             left,
             text="头像",
-            font=STYLE["small_font"],  # type: ignore[arg-type]
+            font=STYLE["small_font"],  #type: ignore[arg-type]
             bg=str(STYLE["frame_bg"]),
             fg=str(STYLE["muted_text"]),
             width=12,
@@ -115,26 +109,26 @@ class ProfileView(BaseView):
                 anchor="w", pady=(16, 0)
             )
 
-    # ------------------------------------------------------------- 头像
+    #------------------------------------------------------------- 头像
     def set_avatar(self, image: Image.Image | None) -> None:
-        """设置头像图片（由控制器在后台线程下载后调用）。"""
+        """设置头像图片（由控制器在后台线程下载后调用）"""
         if not self.alive:
             return
         if image is None:
             self.avatar_label.config(text="头像加载失败")
             return
         try:
-            # 显式 master：避免存在多个 Tk root 时图片注册到别的解释器上
+            #显式master，避免多Tk root时图片注册到别的解释器上
             self._avatar_photo = ImageTk.PhotoImage(
                 image.resize((AVATAR_SIZE, AVATAR_SIZE)), master=self
             )
-        except Exception:  # noqa: BLE001
+        except Exception:  #noqa: BLE001
             return
         self.avatar_label.config(image=self._avatar_photo, text="", width=AVATAR_SIZE, height=AVATAR_SIZE)
 
 
 def _get(info: dict[str, Any], key: str, default: object) -> object:
-    """安全取值：None / 空字符串都退化为默认值。"""
+    """安全取值：None／空字符串都退化为默认值"""
     value = info.get(key)
     if value is None or value == "":
         return default

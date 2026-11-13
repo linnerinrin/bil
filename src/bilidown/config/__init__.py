@@ -1,4 +1,4 @@
-"""配置层：常量与路径解析。"""
+"""配置层：常量与路径解析"""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ from .settings import (
     WINDOW_WIDTH,
 )
 
-# 兼容旧代码的命名
+#STYLE的别名
 STYLE_CONFIG = STYLE
 
 __all__ = [
